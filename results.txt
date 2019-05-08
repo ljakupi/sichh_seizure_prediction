@@ -1,0 +1,48 @@
+##################### 10 inputs
+
+TCN 128
+random - random         0.996
+random - continuous     0.840
+continuous - continuous 0.880
+
+FC 512
+random - random         0.988
+random - continuous     0.928
+continuous - continuous 0.904
+
+RNN
+random - random         0.920
+random - continuous     0.636
+continuous - continuous 0.616
+
+##################### 20 inputs
+TCN 128
+random - random         1.000
+random - continuous     0.832
+continuous - continuous 0.864
+
+FC 512
+random - random         1.000
+random - continuous     0.756
+continuous - continuous 0.600
+
+RNN
+random - random         0.956
+random - continuous     0.620
+continuous - continuous 0.520
+
+##################### 40 inputs
+TCN 128
+random - random         1.000
+random - continuous     0.864
+continuous - continuous 0.904
+
+FC 512
+random - random         1.000
+random - continuous     0.872
+continuous - continuous 0.912
+
+RNN
+random - random         0.780
+random - continuous     0.528
+continuous - continuous 0.568
