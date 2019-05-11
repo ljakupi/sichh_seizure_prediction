@@ -1,16 +1,18 @@
-import config
 import tensorflow as tf
 
 
 class FCNetwork():
     @staticmethod
-    def build(learning_rate=0.001, init='glorot_uniform', dropout=0.5, hidden_size=16):
-
-        cfg = config.Config(data_path='./data_features/CHB-MIT_features', NN='FC', patient=int(2))
-
+    def build(
+            learning_rate=None,
+            init=None,
+            dropout=None,
+            hidden_size=None,
+            input_dim=None
+    ):
         model = tf.keras.Sequential([
             tf.keras.layers.Dense(hidden_size,
-                                  input_dim=cfg.N_features * cfg.num_inputs if cfg.stack_segments_input == True else cfg.N_features,
+                                  input_dim=input_dim,
                                   activation='relu',
                                   kernel_regularizer=tf.keras.regularizers.l2(0.1),
                                   kernel_initializer=init),

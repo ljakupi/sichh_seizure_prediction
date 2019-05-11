@@ -43,12 +43,14 @@ class Config():
         # ~ self.features=["max_correlation","nonlinear_interdependence","SPLV"]
         # ~ self.features=["max_correlation","univariate"]
         # ~ self.features=["univariate"]
+
         self.feature_type = {}
         self.feature_type["max_correlation"] = "bivariate"
         self.feature_type["DSTL"] = "bivariate"
         self.feature_type["nonlinear_interdependence"] = "bivariate"
         self.feature_type["SPLV"] = "bivariate"
         self.feature_type["univariate"] = "univariate"
+
         self.input_files = []
         for feature in self.features:
             self.input_files.append(self.data_path + '/' + 'chb{:02d}'.format(patient) + '/' + feature + '.dat')
@@ -83,12 +85,14 @@ class Config():
                                "C3-P3", "P3-O1", "FP2-F4", "F4-C4", "C4-P4", "P4-O2",
                                "FP2-F8", "F8-T8", "T8-P8-0", "P8-O2", "FZ-CZ", "CZ-PZ"]
         self.selected_channels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+
         self.m_features = 0
         self.m_feature = {}
         self.m_feature["max_correlation"] = 1
         self.m_feature["SPLV"] = 7
         self.m_feature["nonlinear_interdependence"] = 1
         self.m_feature["DSTL"] = 1
+
         self.u_features = 0
         self.u_feature = {}
         self.u_feature["univariate"] = 24
@@ -101,8 +105,9 @@ class Config():
 
         self.N_tot_channels = len(self.channels_names)
         self.N_channels = len(self.selected_channels)
-        self.N_tot_features = int(
-            self.N_tot_channels * (self.N_tot_channels - 1) / 2.) * self.m_features  # data input (# signals)
+
+        self.N_tot_features = int(self.N_tot_channels * (self.N_tot_channels - 1) / 2.) * self.m_features  # data input (# signals)
         self.N_tot_features += int(self.N_tot_channels * self.u_features)
+
         self.N_features = int(self.N_channels * (self.N_channels - 1) / 2.) * self.m_features
         self.N_features += int(self.N_channels * self.u_features) # if univariate features involved than N_features changes

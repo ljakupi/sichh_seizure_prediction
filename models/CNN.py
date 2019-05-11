@@ -4,7 +4,13 @@ import tensorflow as tf
 
 class CNNNetwork():
     @staticmethod
-    def build(learning_rate=0.001, init='glorot_uniform', dropout=0.5, hidden_size=16):
+    def build(
+            learning_rate=None,
+            init=None,
+            dropout=None,
+            hidden_size=None,
+            n_features=None
+    ):
 
         cfg = config.Config(data_path='./data_features/CHB-MIT_features', NN='FC', patient=int(2))
 
