@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--data_path", help="Path to load feature files (.dat)")
     parser.add_argument("--patient", help="Patient number")
     parser.add_argument("--preictal_duration",
-                        help="Time in seconds at which we define segments to be in the preictal period (e.g. 3600 sec = 30 min)")
+                        help="Time in seconds at which we define segments to be in the preictal period (e.g. 1800 sec = 30 min)")
     parser.add_argument("--discard_data", help="Choose if we discard the data or not, value bool: True or False")
     parser.add_argument("--discard_data_duration",
                         help="Criteria to discard some data before and after seizure, expressed in minutes (e.g. 240 min = 4 hours) ")
@@ -108,7 +108,7 @@ class DataPreparation():
                 self.u_features += self.u_feature[feature]
 
         self.preictal_duration = int(args.preictal_duration)
-        self.discard_data = bool(args.discard_data)
+        self.discard_data = eval(args.discard_data)
         self.discard_data_duration = int(args.discard_data_duration)
 
         # calculate the number of features
@@ -139,10 +139,8 @@ class DataPreparation():
         '''
         end = 0
         for i in range(0, len(input_files)):  # E.g. input_files: ['./chb02/max_correlation.dat', './chb02/DSTL.dat']
-            feature = re.search('chb[0-9]*/(.*).dat', input_files[i]).group(
-                1)  # feature file name (.dat file name) - e.g. max_correlation, DSTL, SPLV
-            idx = self.get_indices(self.selected_channels, feature).astype(
-                int)  # features/columns indices (columns in .dat file) - e.g. max_correlation has 153 indices, SPLV has 1071 indices
+            feature = re.search('chb[0-9]*/(.*).dat', input_files[i]).group(1)  # feature file name (.dat file name) - e.g. max_correlation, DSTL, SPLV
+            idx = self.get_indices(self.selected_channels, feature).astype(int)  # features/columns indices (columns in .dat file) - e.g. max_correlation has 153 indices, SPLV has 1071 indices
 
             # CHECK AND FIX THIS CONDITION! LOOKS WEIRD.
             if (i == 0):
@@ -152,13 +150,12 @@ class DataPreparation():
             else:
                 segments_i, _, _, _ = self.loadFileData(input_files[i])
 
-            segments_i = segments_i[:, idx]
+            # segments_i = segments_i[:, idx] # careful! consider to uncommment it!
             shape = np.shape(segments_i)
             start = end
             end += shape[1]
 
-            segments[:,
-            start:end] = segments_i  # concatenate all features per segment. E.g. if we use 2 feature files and each file have 153 feature columns, than the concatenation will result in 306 column features
+            segments[:,start:end] = segments_i  # concatenate all features per segment. E.g. if we use 2 feature files and each file have 153 feature columns, than the concatenation will result in 306 column features
 
             print("Loaded feature file: ", feature)
         print("Total segments shape (after concatenation of all feature files): ", np.shape(segments))
@@ -208,44 +205,59 @@ class DataPreparation():
         labels = np.zeros(len(self.times), dtype=int)
 
         discard_data = self.discard_data # True or False
-        discard_data_duration = self.discard_data_duration  # segments within this time duration are discarded. E.g. 240min * 60 = 4 hours
+        discard_data_duration = self.discard_data_duration * 60  # segments within this time duration are discarded. E.g. 240min / 60 = 4 hours
 
         # lists to hold labeled segments
         preictal_list = []
         ictal_list = []
         interictal_list = []
 
+        print('discard_data: ', discard_data)
         for index, seizure_start in enumerate(self.seizures_start):
             for i in range(0, len(self.times)):
                 if (discard_data):
-                    if (seizure_start > self.times[i] and seizure_start - self.times[i] < self.preictal_duration):
-                        labels[i] = 1  # preictal
-                        preictal_list.append(self.segments[i])
-
+                    # if (seizure_start > self.times[i] and seizure_start - self.times[i] < self.preictal_duration):
+                    if (self.times[i] > (seizure_start - self.preictal_duration) and self.times[i] < seizure_start):
+                        if(labels[i] == 0):
+                            labels[i] = 1  # preictal
+                            preictal_list.append(self.segments[i])
 
                     elif (self.seizures_start[index] < self.times[i] and self.seizures_end[index] > self.times[i]):
-                        labels[i] = 2  # ictal
-                        ictal_list.append(self.segments[i])
+                        if (labels[i] == 0):
+                            labels[i] = 2  # ictal
+                            ictal_list.append(self.segments[i])
 
+                    elif (self.times[i] < seizure_start - (self.preictal_duration + discard_data_duration)) or (self.times[i] > (self.seizures_end[index] + discard_data_duration)):
+                        if (labels[i] == 0):
+                            interictal_list.append(self.segments[i])
+                            labels[i] = 3  # interictal
 
-                    elif (seizure_start > self.times[i] and (
-                                    (seizure_start - self.preictal_duration) - self.times[
-                                    i] < discard_data_duration) or (
-                                (self.seizures_end[index] + discard_data_duration) > self.times[i])):  # discard_data_duration
-                        interictal_list.append(self.segments[i])
+                    # elif (seizure_start > self.times[i] and
+                    #           ((seizure_start - self.preictal_duration) - self.times[i] > discard_data_duration) or
+                    #           ((self.seizures_end[index] + discard_data_duration) < self.times[i])):  # discard_data_duration
+                    #     interictal_list.append(self.segments[i])
+                    #     labels[i] = 3 # interictal
 
-                else:
-                    if (seizure_start > self.times[i] and seizure_start - self.times[i] < self.preictal_duration):
-                        labels[i] = 1  # preictal
-                    elif (self.seizures_start[index] < self.times[i] and self.seizures_end[index] > self.times[i]):
-                        labels[i] = 2  # ictal
+                # else:
+                #     if (seizure_start > self.times[i] and seizure_start - self.times[i] < self.preictal_duration):
+                #         labels[i] = 1  # preictal
+                #     elif (self.seizures_start[index] < self.times[i] and self.seizures_end[index] > self.times[i]):
+                #         labels[i] = 2  # ictal
+
+        print('self.preictal_duration ', self.preictal_duration)
+        print('discard_data_duration ', discard_data_duration)
+        print('self.times shape', np.shape(self.times))
+        print('self.segments shape', np.shape(self.segments))
+        print('preictal_list shape', np.shape(preictal_list))
+        print('ictal_list shape', np.shape(ictal_list))
+        print('interictal_list shape', np.shape(interictal_list))
 
         np_preictal_file = np.asarray(preictal_list, dtype=np.float32)
         np_ictal_file = np.asarray(ictal_list, dtype=np.float32)
         np_interictal_file = np.asarray(interictal_list, dtype=np.float32)
 
         # writing labeled segments to separate binary files
-        parent_dir = './processed_datasets/CHB-MIT/' + 'chb{:02d}'.format(self.patient) + '/preictal-' + str(int(self.preictal_duration / 60))
+        parent_dir = './processed_datasets/CHB-MIT/' + 'chb{:02d}'.format(self.patient) + '/preictal-' + str(int(self.preictal_duration / 60)) + '-discard-' + str(int(self.discard_data_duration / 60))
 
         # if binary fiels' parent dir does not exist, then create
         os.makedirs(parent_dir, exist_ok=True)
@@ -260,26 +272,22 @@ class DataPreparation():
         np.save(ictal_file, np_ictal_file)
         np.save(interictal_file, np_interictal_file)
 
-        # check how many data-points are annotated as 1 (preictal) or 2 (ictal) and 0 (interictal) respectively
+        # check how many data-points are annotated as 1 (preictal) or 2 (ictal) and 3 (interictal) respectively
         unique, counts = np.unique(labels, return_counts=True)
-        print('Total samples grouped by class (labels: interictal=0, preictal=1, ictal=2): ',
+        print('Total samples grouped by class (labels: preictal=1, ictal=2, interictal=3): ',
               dict(zip(unique, counts)))
 
-        return labels  # array filled with values 0, 1, 2
+        return labels  # array filled with values 1, 2, 3
 
     def loadFileData(self, input_file):
         f = open(input_file, 'r')
         line = f.readline()
         seizures_start = []
         seizures_end = []
-        seizures_time = [int(t) for t in line.strip().split(
-            ' ')];  # get the seizure times - first row/array in .dat files. This row is a pair of values indicating the start and end time of a seizure
-        for i in range(0, int(len(
-                seizures_time) / 2)):  # /2 because if there are 3 seizures there are 6 values in seizure times (seizures_time) with start and end time for each seizure
-            seizures_start.append(seizures_time[
-                                      2 * i])  # append each seizure start time to seizures_start array. E.g if there are 6 times, then 0, 2, 4 are the starting times
-            seizures_end.append(seizures_time[
-                                    2 * i + 1])  # append each seizure end time to seizures_end array. E.g if there are 6 times, then 1, 3, 5 are the ending times
+        seizures_time = [int(t) for t in line.strip().split(' ')];  # get the seizure times - first row/array in .dat files. This row is a pair of values indicating the start and end time of a seizure
+        for i in range(0, int(len(seizures_time) / 2)):  # /2 because if there are 3 seizures there are 6 values in seizure times (seizures_time) with start and end time for each seizure
+            seizures_start.append(seizures_time[2 * i])  # append each seizure start time to seizures_start array. E.g if there are 6 times, then 0, 2, 4 are the starting times
+            seizures_end.append(seizures_time[2 * i + 1])  # append each seizure end time to seizures_end array. E.g if there are 6 times, then 1, 3, 5 are the ending times
 
         lines = [line.rstrip().split(' ') for line in f]
         # N_features = len(lines[0]) - 1 # weird variable - not used and still is declared
@@ -288,8 +296,7 @@ class DataPreparation():
         segments = np.float32(lines)  # assign segments with values from feature files (.dat)
 
         times = segments[:, 0]  # store times (first column in .dat file)
-        segments = segments[:,
-                   1:]  # store segments (all the columns excluding the first one (time column)) - one segment have many columns
+        segments = segments[:,1:]  # store segments (all the columns excluding the first one (time column)) - one segment have many columns
         return segments, times, seizures_start, seizures_end
 
 

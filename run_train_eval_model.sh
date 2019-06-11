@@ -1,7 +1,9 @@
+#!/usr/bin/env bash
 python ./train_eval_model.py \
 --data_path=./processed_datasets/CHB-MIT \
---patient=2 \
---model=RNN \
+--patient=3 \
+--model=FC \
 --preictal_duration=1800 \
---group_segments_form_input=True \
+--discard_data_duration=60 \
+--group_segments_form_input=False \
 --n_segments_form_input=10

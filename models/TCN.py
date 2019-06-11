@@ -4,7 +4,7 @@ import tensorflow as tf
 
 class TCNNetwork():
     @staticmethod
-    def build(
+    def build_model(
             learning_rate=None,
             init=None,
             dropout=None,
