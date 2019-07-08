@@ -3,21 +3,21 @@ import tensorflow as tf
 class FCNetwork():
     @staticmethod
     def build_model(
-                    input_dim=None,
-                    units1=None,
-                    units2=None,
-                    units3=None,
-                    dropout1=None,
-                    dropout2=None,
-                    dropout3=None,
-                    learning_rate=None,
-                    multi_layer=False,
-                    sgd_opt=False,
-                    moment=False,
-                    l2_1=False,
-                    l2_2=False,
-                    l2_3=False,
-                    kernel_init=False
+                    input_dim,
+                    units1,
+                    units2,
+                    units3,
+                    dropout1,
+                    dropout2,
+                    dropout3,
+                    learning_rate,
+                    multi_layer,
+                    sgd_opt,
+                    moment,
+                    l2_1,
+                    l2_2,
+                    l2_3,
+                    kernel_init
                    ):
 
         model = tf.keras.models.Sequential()

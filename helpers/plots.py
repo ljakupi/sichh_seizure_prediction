@@ -10,21 +10,6 @@ cmap_data = plt.cm.Paired
 cmap_cv = plt.cm.coolwarm
 
 
-def plot_cv_splits(cv_fold, X, Y, PREICTAL_DURATION, PATIENT, cv_fold_name):
-
-    # StratifiedKFold plot
-    fig, ax = plt.subplots(figsize=(7, 4))
-    plot_cv_indices(cv_fold, X, Y, ax, 5)
-    ax.legend([Patch(color=cmap_cv(.8)), Patch(color=cmap_cv(.02))], ['Testing set', 'Training set'], loc=(1.02, .8))
-    fig.subplots_adjust(right=.7)
-
-    DIR = './images/cv/' + 'chb{:02d}'.format(PATIENT)
-    os.makedirs(DIR, exist_ok=True)  # create any parent directory that does not exist
-    fig.savefig(DIR + '/' + str(PREICTAL_DURATION) + '_' + cv_fold_name + '.png')  # Save the full figure...
-
-
-
-
 def plot_cv_indices(cv, X, y, ax, n_splits, lw=10):
     """Create a sample plot for indices of a cross-validation object."""
 
@@ -45,16 +30,29 @@ def plot_cv_indices(cv, X, y, ax, n_splits, lw=10):
                c=y, marker='_', lw=lw, cmap=cmap_data)
 
     # Formatting
-    yticklabels = list(range(n_splits)) + ['class']
+    # yticklabels = list(range(n_splits)) + ['Classes']
+    yticklabels = list(np.arange(1, n_splits+1)) + ['Classes']
     ax.set(yticks=np.arange(n_splits+1) + .5, yticklabels=yticklabels,
-           xlabel='Samples', ylabel="CV iteration",
+           xlabel='Samples', ylabel="CV folds",
            ylim=[n_splits+1.2, -.2], xlim=[0, len(y)])
     ax.set_title('{}'.format(type(cv).__name__), fontsize=14)
     return ax
 
 
+def plot_cv_splits(cv_fold, X, Y, PREICTAL_DURATION, PATIENT, cv_fold_name, SEGMENTATION_DURATION):
 
-def plot_roc_auc(tprs, mean_fpr, aucs, MODEL, PATIENT, plt):
+    # StratifiedKFold plot
+    fig, ax = plt.subplots(figsize=(7, 4))
+    plot_cv_indices(cv_fold, X, Y, ax, 5)
+    ax.legend([Patch(color=cmap_cv(.8)), Patch(color=cmap_cv(.02))], ['Testing set', 'Training set'], loc=(1.02, .8))
+    fig.subplots_adjust(right=.7)
+
+    DIR = './images/cv/sec-' + SEGMENTATION_DURATION + '/chb{:02d}'.format(PATIENT)
+    os.makedirs(DIR, exist_ok=True)  # create any parent directory that does not exist
+    fig.savefig(DIR + '/' + str(int(int(PREICTAL_DURATION)/60)) + '_' + cv_fold_name + '.png')  # Save the full figure...
+
+
+def plot_roc_auc(tprs, mean_fpr, aucs, MODEL, PATIENT, plt, SEGMENTATION_DURATION, PREICTAL_DURATION):
     plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
              label='Chance', alpha=.8)
 
@@ -79,13 +77,13 @@ def plot_roc_auc(tprs, mean_fpr, aucs, MODEL, PATIENT, plt):
     plt.title('Receiver operating characteristic example')
     plt.legend(loc="lower right")
 
-    DIR = './images/cv/' + 'chb{:02d}'.format(PATIENT)
+    DIR = './images/cv/sec-' + SEGMENTATION_DURATION + '/chb{:02d}'.format(PATIENT)
     os.makedirs(DIR, exist_ok=True)  # create any parent directory that does not exist
-    plt.savefig(DIR + '/' + MODEL + '_ROC_AUC.png')
+    plt.savefig(DIR + '/' + MODEL + '_preictal_' + str(int(int(PREICTAL_DURATION)/60)) + '_ROC_AUC.png')
 
 
 #Evaluation of Model - Confusion Matrix Plot
-def plot_confusion_matrix(cm, MODEL, PATIENT, plt, classes,
+def plot_confusion_matrix(cm, MODEL, PATIENT, plt, SEGMENTATION_DURATION, PREICTAL_DURATION, classes,
                           normalize=False,
                           title='Confusion matrix',
                           cmap=plt.cm.Blues,):
@@ -112,7 +110,7 @@ def plot_confusion_matrix(cm, MODEL, PATIENT, plt, classes,
     plt.xlabel('Predicted label')
     plt.tight_layout()
 
-    DIR = './images/cv/' + 'chb{:02d}'.format(PATIENT)
+    DIR = './images/cv/sec-' + SEGMENTATION_DURATION + '/chb{:02d}'.format(PATIENT)
     os.makedirs(DIR, exist_ok=True)  # create any parent directory that does not exist
-    plt.savefig(DIR + '/' + MODEL + '_confusion_matrix.png')
+    plt.savefig(DIR + '/' + MODEL + '_preictal_' + str(int(int(PREICTAL_DURATION)/60)) + '_confusion_matrix.png')
 

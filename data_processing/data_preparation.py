@@ -25,7 +25,7 @@ import numpy as np
   self.display_step: display loss and accuracy every n steps
   self.num_inputs: number of segments put together to make a sequence
   self.num_hidden: number of neurons in the hidden layers (for LSTM and FC neural networks)
-  self.levels: depth of the neural network (TCN only)
+  self.levels: depth of the neural network (TCN-CORE only)
   self.num_classes: number of classes (usually preictal and interictal)
   self.channels_names: names of channels used (it should correspond to the ones used to create the features)
   self.selected_channels: choose which channel will be used. Only the selected channels will be loaded
@@ -82,6 +82,7 @@ class DataPreparation():
         # set feature types
         self.feature_type = {}
         self.feature_type["max_correlation"] = "bivariate"
+        self.feature_type["max_correlation_unbiased"] = "bivariate"
         self.feature_type["DSTL"] = "bivariate"
         self.feature_type["nonlinear_interdependence"] = "bivariate"
         self.feature_type["SPLV"] = "bivariate"
@@ -91,6 +92,7 @@ class DataPreparation():
         self.m_features = 0
         self.m_feature = {}
         self.m_feature["max_correlation"] = 1
+        self.m_feature["max_correlation_unbiased"] = 1
         self.m_feature["SPLV"] = 7
         self.m_feature["nonlinear_interdependence"] = 1
         self.m_feature["DSTL"] = 1
@@ -257,7 +259,7 @@ class DataPreparation():
         np_interictal_file = np.asarray(interictal_list, dtype=np.float32)
 
         # writing labeled segments to separate binary files
-        parent_dir = './processed_datasets/CHB-MIT/' + 'chb{:02d}'.format(self.patient) + '/preictal-' + str(int(self.preictal_duration / 60)) + '-discard-' + str(int(self.discard_data_duration / 60))
+        parent_dir = './processed_datasets/CHB-MIT/sec-30/' + 'chb{:02d}'.format(self.patient) + '/preictal-' + str(int(self.preictal_duration / 60)) + '-discard-' + str(int(self.discard_data_duration / 60))
 
         # if binary fiels' parent dir does not exist, then create
         os.makedirs(parent_dir, exist_ok=True)

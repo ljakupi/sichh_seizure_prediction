@@ -42,7 +42,7 @@ X = tf.placeholder("float", [None, cfg.N_features, cfg.num_inputs])
 # Y = tf.placeholder("float", [cfg.num_classes])
 Y = tf.placeholder("float", [None, cfg.num_classes])
 
-if (cfg.NN == "TCN"):
+if (cfg.NN == "TCN-CORE"):
     logits = TCN.TCN(X, cfg)
 elif (cfg.NN == "FC"):
     logits = FC.FC(X, cfg)

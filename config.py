@@ -22,7 +22,7 @@ import numpy as np
   self.display_step: display loss and accuracy every n steps
   self.num_inputs: number of segments put together to make a sequence
   self.num_hidden: number of neurons in the hidden layers (for LSTM and FC neural networks)
-  self.levels: depth of the neural network (TCN only)
+  self.levels: depth of the neural network (TCN-CORE only)
   self.num_classes: number of classes (usually preictal and interictal)
   self.channels_names: names of channels used (it should correspond to the ones used to create the features)
   self.selected_channels: choose which channel will be used. Only the selected channels will be loaded

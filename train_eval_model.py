@@ -12,7 +12,7 @@ from data_processing.data_loader import loadData
 from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
 from sklearn import metrics #confusion_matrix, roc_auc_score, f1_score, recall_score, precision_score, balanced_accuracy_score, accuracy_score, roc_curve
 
-from helpers.plots import plot_cv_indices, plot_roc_auc, plot_cv_splits, plot_confusion_matrix
+from helpers.plots import plot_roc_auc, plot_cv_splits, plot_confusion_matrix
 from models.FC import FCNetwork
 from models.RNN import RNNNetwork
 from models.TCN import TCNNetwork
@@ -36,19 +36,21 @@ parser.add_argument("--group_segments_form_input", help="bool: Group segments to
 parser.add_argument("--preictal_duration", help="Load data from specified preictal duration (e.g. 1800s or 30min)")
 parser.add_argument("--discard_data_duration", help="int: which discard criteria data to use (e.g. 250min of discard data = 4 hours")
 parser.add_argument("--n_segments_form_input", help="int: How many segments to use to form one input. This works iff group_segments_form_input==True.")
+parser.add_argument("--segmentation_duration", help="str: Duration used for data segmentation during the feature calculations (e.g. 30 sec or 5 sec).")
 args = parser.parse_args()
 
 
 # Define some hyper-parameters
-DATA_DIRECTORY = args.data_path + '/chb{:02d}'.format(int(args.patient)) + '/preictal-' + str(int(int(args.preictal_duration) / 60))  + '-discard-' + str(int(int(args.discard_data_duration) / 60))
+DATA_DIRECTORY = args.data_path + '/sec-' + args.segmentation_duration + '/chb{:02d}'.format(int(args.patient)) + '/preictal-' + str(int(int(args.preictal_duration) / 60))  + '-discard-' + str(int(int(args.discard_data_duration) / 60))
 FILE_NAMES = ['interictal_segments.npy', 'preictal_segments.npy']
 GROUP_SEGMENTS_FORM_INPUT = eval(args.group_segments_form_input)  # if True, use N segments and group together to form one input
 N_SEGMENTS_FORM_INPUT = int(args.n_segments_form_input)  # number of segments to form an input
 PREICTAL_DURATION = int(args.preictal_duration)
 PATIENT = int(args.patient)
 MODEL = args.model
+SEGMENTATION_DURATION = args.segmentation_duration
 BUFFER_SIZE = 500000
-BATCH_SIZE = 16
+BATCH_SIZE = 10
 CV = 5
 
 print("---------------------------------------------------------------------------------------------------------------------------------------------------")
@@ -71,11 +73,11 @@ N_FEATURES = np.shape(X)[1]  # data features/dimensionality
 INPUT_DIM = N_FEATURES * N_SEGMENTS_FORM_INPUT if GROUP_SEGMENTS_FORM_INPUT == True else N_FEATURES
 
 # if use of RNN and group segments to form timesteps inputs, reshape the X to [timesteps,features] => timesteps = N_SEGMENTS_FORM_INPUT
-if(GROUP_SEGMENTS_FORM_INPUT == True and MODEL == "RNN"):
+if(GROUP_SEGMENTS_FORM_INPUT == True and (MODEL == "RNN" or MODEL == "TCN")):
     FEATURES_ORIGINAL_SIZE = int(N_FEATURES / N_SEGMENTS_FORM_INPUT)
     X = X.reshape([-1, N_SEGMENTS_FORM_INPUT, FEATURES_ORIGINAL_SIZE])
 
-print("X shape after reshaped: ", np.shape(X))
+print("X shape after reshape: ", np.shape(X))
 
 # print("Splitting the data")
 # X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, stratify=Y) # , stratify=y
@@ -90,10 +92,12 @@ print("X shape after reshaped: ", np.shape(X))
 
 
 # Load parameters' from JSON
-PARAMETERES_FILE_PATH = './CV_results/' + MODEL + '/' + 'chb{:02d}'.format(PATIENT) + '/preictal_' + str(int(PREICTAL_DURATION / 60))  + '_discard_' + str(int(int(args.discard_data_duration) / 60)) + '_best_params.json'
-with open(PARAMETERES_FILE_PATH, 'r') as JSON_FILE:
-    PARAMETERS = json.load(JSON_FILE)
-print("Hyper-parameters: ", PARAMETERS)
+# No CV parameters for TCN
+if MODEL != "TCN":
+    PARAMETERES_FILE_PATH = './CV_results/' + MODEL + '/sec-' + SEGMENTATION_DURATION + '/' + 'chb{:02d}'.format(PATIENT) + '/preictal_' + str(int(PREICTAL_DURATION / 60))  + '_discard_' + str(int(int(args.discard_data_duration) / 60)) + '_best_params.json'
+    with open(PARAMETERES_FILE_PATH, 'r') as JSON_FILE:
+        PARAMETERS = json.load(JSON_FILE)
+    print("Hyper-parameters: ", PARAMETERS)
 
 
 # select neural network
@@ -103,17 +107,28 @@ if (MODEL == "FC"):
         input_dim=INPUT_DIM,
         units1=PARAMETERS['units1'],
         units2=PARAMETERS['units2'],
+        units3=PARAMETERS['units3'],
         dropout1=PARAMETERS['dropout1'],
         dropout2=PARAMETERS['dropout2'],
+        dropout3=PARAMETERS['dropout3'],
         learning_rate=PARAMETERS['learning_rate'],
         multi_layer=PARAMETERS['multi_layer'],
+        sgd_opt=PARAMETERS['sgd_opt'],
+        moment=PARAMETERS['moment'],
         l2_1=PARAMETERS['l2_1'],
         l2_2=PARAMETERS['l2_2'],
+        l2_3=PARAMETERS['l2_3'],
         kernel_init=PARAMETERS['kernel_init']
     )
     print("Model architecture: ", model.summary())
 elif (MODEL == "TCN"):
-    model = TCNNetwork.build_model()
+
+    # learning_rate, dropout
+    model = TCNNetwork.build_model(
+        input_dim=FEATURES_ORIGINAL_SIZE,
+        timesteps=N_SEGMENTS_FORM_INPUT
+    )
+    print("Model architecture: ", model.summary())
 elif (MODEL == "RNN"):
     model = RNNNetwork.build_model(
         input_dim=FEATURES_ORIGINAL_SIZE,
@@ -163,12 +178,12 @@ callbacks = [
 #
 '''
 # define 10-fold cross validation test harness
-cv_skfold = StratifiedKFold(n_splits=CV, shuffle=True, random_state=seed)
-cv_kfold = KFold(n_splits=CV, shuffle=True, random_state=seed)
+cv_skfold = StratifiedKFold(n_splits=CV, shuffle=True) # , random_state=42
+cv_kfold = KFold(n_splits=CV, shuffle=True) # , random_state=42 # use this KFold splits for plot only
 
 # Plot cv fold data splits - we use StratifiedKFold, but compare with KFold using the plot
-plot_cv_splits(cv_skfold, X, Y, PREICTAL_DURATION, PATIENT, 'skfold_data_plot')
-plot_cv_splits(cv_kfold, X, Y, PREICTAL_DURATION, PATIENT, 'kfold_data_plot')
+plot_cv_splits(cv_skfold, X, Y, PREICTAL_DURATION, PATIENT, 'skfold_data_plot', SEGMENTATION_DURATION)
+plot_cv_splits(cv_kfold, X, Y, PREICTAL_DURATION, PATIENT, 'kfold_data_plot', SEGMENTATION_DURATION)
 
 
 # hold tprs, aucs and the mean to plot the ROC AUC
@@ -184,6 +199,7 @@ final_recall = []
 final_f1 = []
 final_auc = []
 final_fpr = []
+final_fnr = []
 final_tpr = []
 final_tnr = []
 
@@ -210,7 +226,7 @@ for train, test in cv_skfold.split(X, Y):
     test_set = tf.data.Dataset.from_tensor_slices((X[test], Y[test])).batch(BATCH_SIZE, drop_remainder=False)
 
     # fit the model
-    model.fit(train_set, epochs=30, validation_data=test_set, class_weight=class_weights, callbacks=callbacks)
+    model.fit(train_set, epochs=300, validation_data=test_set, class_weight=class_weights, callbacks=callbacks)
 
     # evaluate the model
     loss, acc = model.evaluate(test_set)
@@ -223,10 +239,14 @@ for train, test in cv_skfold.split(X, Y):
     ###
     '''
     # predict probabilities for test set
-    y_pred_probs = model.predict(X[test]).ravel() # ravel() reduce to 1d array
+    y_pred_probs = model.predict(X[test]).ravel() #.ravel() # ravel() reduce to 1d array
 
     # predict crisp classes for test set
-    y_pred_classes = model.predict_classes(X[test]).ravel() # ravel() reduce to 1d array
+    if(MODEL == "TCN"):
+        y_pred_classes = (y_pred_probs > 0.5) # get classes for Model() since predict_classes() works for Sequential only
+    else:
+        y_pred_classes = model.predict_classes(X[test]).ravel()  # ravel() reduce to 1d array
+
 
     # Calculate the metrics
     # accuracy: (tp + tn) / (p + n)
@@ -277,6 +297,10 @@ for train, test in cv_skfold.split(X, Y):
     final_fpr.append(fpr)
     print('FPR: ', fpr)
 
+    fnr = fn/(fn+tp)
+    final_fnr.append(fnr)
+    print('FPR: ', fnr)
+
     tpr = tp/(tp+fn)
     final_tpr.append(tpr)
     print('TPR (sensitivity): ', tpr)
@@ -296,10 +320,10 @@ for train, test in cv_skfold.split(X, Y):
     plt.plot(fpr, tpr, lw=1, alpha=0.3, label='ROC fold %d (AUC = %0.2f)' % (kth, roc_auc))
     print("=========================================================================================================================================================")
 
-plot_roc_auc(tprs, mean_fpr, aucs, MODEL, PATIENT, plt)
+plot_roc_auc(tprs, mean_fpr, aucs, MODEL, PATIENT, plt, SEGMENTATION_DURATION, PREICTAL_DURATION)
 
 cm_constructed = np.array([int(np.sum(tns) / CV), int(np.sum(fps) / CV), int(np.sum(fns) / CV), int(np.sum(tps) / CV)]).reshape((2, 2))
-plot_confusion_matrix(cm_constructed, MODEL, PATIENT, plt, classes=[0,1], title='Confusion matrix')
+plot_confusion_matrix(cm_constructed, MODEL, PATIENT, plt, SEGMENTATION_DURATION, PREICTAL_DURATION, classes=[0,1], title='Confusion matrix')
 
 print('Report the results:')
 print('Final confusion matrix, without normalization: \n', cm_constructed)
@@ -308,9 +332,10 @@ print('Final balanced_acc', np.mean(final_balanced_acc))
 print('Final precision', np.mean(final_precision))
 print('Final recall', np.mean(final_recall))
 print('Final f1', np.mean(final_f1))
-print('Final auc', np.mean(final_auc))
-print('Final fpr', np.mean(final_fpr))
-print('Final tpr', np.mean(final_tpr))
-print('Final tnr', np.mean(final_tnr))
+print('Final AUC', np.mean(final_auc))
+print('Final FPR', np.mean(final_fpr))
+print('Final FNR', np.mean(final_fnr))
+print('Final TPR (sensitivity)', np.mean(final_tpr))
+print('Final TNR (specificity)', np.mean(final_tnr))
 
-print("---------------------------------------------------------------------------------------------------------------------------------------------------")
+print("-------------------------------------------------------------------------------------------------------------------------------------------------")

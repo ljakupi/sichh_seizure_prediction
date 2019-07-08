@@ -50,7 +50,7 @@ with tf.variable_scope('Input'):
     Y = tf.placeholder(tf.float32, shape=[None, cfg.num_classes], name='Y')
 
 # Select neural network
-if (cfg.NN == "TCN"):
+if (cfg.NN == "TCN-CORE"):
     output_logits = TCN.TCN(X, cfg)
 elif (cfg.NN == "FC"):
     output_logits = FC.FC(X, cfg)
