@@ -1,4 +1,5 @@
-**Author:** Labinot Jakupi 
+**Author:** Labinot Jakupi
+
 **Date:** 09.07.2019
 
 # Epileptic seizures prediction
