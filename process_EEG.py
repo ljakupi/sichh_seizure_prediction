@@ -134,7 +134,7 @@ class EEG_data():
         '''
         N_segments = int(len(self.eeg_signals._data[0]) / self.sample_size)
         self.segments_idx = np.linspace(0, len(self.eeg_signals._data[0]), N_segments, dtype=int, endpoint=False)[0:-1]
-        print('N_segments (line 137 @ process_EEG.py)', N_segments)
+        # print('N_segments (line 137 @ process_EEG.py)', N_segments)
         print('self.sample_size', self.sample_size)
         print('self.eeg_signals._data[0]', len(self.eeg_signals._data[0]))
         print('self.segments_idx', len(self.segments_idx))
